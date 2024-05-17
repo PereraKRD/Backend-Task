@@ -3,9 +3,16 @@ const ErrorHandler = require('../utils/errorHandler');
 const catchAsyncErrors = require('../middlewares/catchAsyncErrors');
 const sendToken = require('../utils/jwtToken');
 
+const cloudinary = require('cloudinary');
 
 // Register a user   => /api/v1/register
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
+    
+    const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
+        folder: 'avatars',
+        width: 150,
+        crop: "scale"
+    })
 
     const { firstname, lastname, mobile, email, password } = req.body;
 
@@ -14,7 +21,11 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
         lastname,
         mobile,
         email,
-        password
+        password,
+        avatar: {
+            public_id: result.public_id,
+            url: result.secure_url
+        }
     })
 
     sendToken(user, 200, res)
@@ -25,15 +36,15 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
 
 // Login User => /api/v1/login
 exports.loginUser = catchAsyncErrors( async (req, res, next) => {
-    // user have to provide email and password to login
+
     const { email, password } = req.body;
 
-    // Check whether email and password are entered or not by user
+
     if (!email || !password){
         return next(new ErrorHandler('Please entter email and password', 400))
     } 
 
-    // Finding user in database
+
     const user = await User.findOne({ email }).select('+password')
 
     if (!user){
@@ -51,7 +62,7 @@ exports.loginUser = catchAsyncErrors( async (req, res, next) => {
 })
 
 
-// Get the details of currently logged user
+// Get the details of currently logged user => /api/v1/me
 exports.getUserProfile = catchAsyncErrors( async (req, res, next) => {
     const user = await User.findById(req.user.id);
 
@@ -61,7 +72,7 @@ exports.getUserProfile = catchAsyncErrors( async (req, res, next) => {
     })
 })
 
-// Logout User
+// Logout User => api/v1/logout
 exports.logoutUser = catchAsyncErrors( async (req, res, next) => {
     res.cookie('token', null, {
         expires: new Date(Date.now()),
@@ -70,6 +81,6 @@ exports.logoutUser = catchAsyncErrors( async (req, res, next) => {
 
     res.status(200).json({
         success: true,
-        message: 'Logged Out'
+        message: 'User have Successfully Logged Out'
     })
 })
